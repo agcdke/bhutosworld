@@ -1,0 +1,96 @@
+name: CI / CD — Pose Estimation App
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Job 1: Fast code-quality gate ─────────────────────────────────────────
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Lint (pyflakes + pycodestyle + isort)
+        run: ruff check .
+
+      - name: Format check
+        run: ruff format --check .
+
+  # ── Job 2: Install full stack and validate the app ─────────────────────────
+  validate:
+    name: Validate App
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install system packages (mirrors Streamlit Cloud)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            $(grep -v '^#' packages.txt | tr '\n' ' ')
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Syntax check
+        run: python -m py_compile app.py && echo "✓ app.py syntax OK"
+
+      - name: Verify critical imports
+        run: |
+          python - <<'EOF'
+          import ultralytics
+          import streamlit
+          import streamlit_webrtc
+          import av
+          print("All critical imports resolved successfully.")
+          EOF
+
+  # ── Job 3: Mark deployment (Streamlit Cloud handles the actual redeploy) ───
+  deploy:
+    name: Deploy to Streamlit Community Cloud
+    needs: [lint, validate]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    # Creates a GitHub Deployment entry visible in the repo sidebar.
+    # Set the URL to your app's Streamlit Cloud URL after first deploy.
+    environment:
+      name: production
+      url: ${{ vars.STREAMLIT_APP_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deployment summary
+        run: |
+          echo "=============================================="
+          echo "  CI passed — triggering Streamlit Cloud CD  "
+          echo "=============================================="
+          echo "Streamlit Community Cloud watches the 'main' branch and"
+          echo "automatically redeploys whenever a new commit lands here."
+          echo ""
+          echo "Commit : ${{ github.sha }}"
+          echo "Author : ${{ github.actor }}"
+          echo "Message: ${{ github.event.head_commit.message }}"

@@ -1,0 +1,40 @@
+i want to create a web app that can access laptop front camera and deployed on Streamlit community cloud. The web app can analyse my body and do dynamic pose estimation. i want to use YOLO, streamlit, and other python packages if needed.
+
+Run locally
+  
+  # install deps (use a venv)
+  pip install -r requirements.txt
+
+  # launch
+  streamlit run app.py
+
+  The first run will auto-download the YOLOv8 model (~6 MB for nano).
+
+  ---
+  Deploy to Streamlit Community Cloud
+  
+  1. Push this folder to a GitHub repo (root or a sub-folder)
+  2. Go to https://share.streamlit.io → New app
+  3. Point to your repo + app.py
+  4. Streamlit Cloud reads requirements.txt and packages.txt automatically — no extra config needed
+
+  ---
+  What the app does
+  
+  ┌────────────┬──────────────────────────────────────────────────────────────────────────────────────────┐
+  │  Feature   │                                          Detail                                          │
+  ├────────────┼──────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Camera     │ WebRTC via streamlit-webrtc — real-time, not single-frame                                │
+  ├────────────┼──────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Model      │ YOLOv8 Nano/Small/Medium (selectable in sidebar)                                         │
+  ├────────────┼──────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Keypoints  │ 17 COCO body joints with skeleton overlay                                                │
+  ├────────────┼──────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Controls   │ Confidence slider, bbox/label/conf toggles — update the live stream without restarting   │
+  ├────────────┼──────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Cloud-safe │ opencv-python-headless + packages.txt covers the Linux system libs Streamlit Cloud needs │
+  └────────────┴──────────────────────────────────────────────────────────────────────────────────────────┘
+
+  ---
+  One known limitation: WebRTC on Streamlit Community Cloud's free tier can occasionally have NAT traversal hiccups for users behind strict corporate firewalls. Adding a TURN server (e.g., Twilio or
+  Metered) to RTC_CONFIG in app.py fixes that if it ever comes up.
